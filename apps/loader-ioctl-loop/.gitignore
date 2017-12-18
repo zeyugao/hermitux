@@ -1,0 +1,9 @@
+ioctl
+ioctl_unopt
+ioctl_fast
+
+*_results
+Makefile
+CMakeCache.txt
+CMakeFiles/
+*.cmake

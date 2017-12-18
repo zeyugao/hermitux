@@ -18,3 +18,7 @@ hermitux-toolchain/
 
 .vscode
 .idea
+hermitux-kernel
+syscall-rewriter
+
+*~
