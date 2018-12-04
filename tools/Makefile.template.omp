@@ -21,8 +21,12 @@ ISLE=uhyve
 STRIP?=1
 # Enable the fine-grained seccomp filter:
 SECCOMP?=0
+<<<<<<< HEAD
 #ARGS?="-i100"
 ARGS?=
+=======
+ARGS?="-i100"
+>>>>>>> merge master
 CPUS?=4
 MEM?=4G
 

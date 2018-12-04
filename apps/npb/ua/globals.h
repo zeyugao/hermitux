@@ -1,9 +1,9 @@
 //-------------------------------------------------------------------------//
 //                                                                         //
-//  This benchmark is a serial C version of the NPB CG code. This C        //
-//  version is developed by the Center for Manycore Programming at Seoul   //
-//  National University and derived from the serial Fortran versions in    //
-//  "NPB3.3-SER" developed by NAS.                                         //
+//  This benchmark is an OpenMP C version of the NPB CG code. This OpenMP  //
+//  C version is developed by the Center for Manycore Programming at Seoul //
+//  National University and derived from the OpenMP Fortran versions in    //
+//  "NPB3.3-OMP" developed by NAS.                                         //
 //                                                                         //
 //  Permission to use, copy, distribute and modify this software for any   //
 //  purpose with or without fee is hereby granted. This software is        //
@@ -15,7 +15,8 @@
 //                                                                         //
 //           http://www.nas.nasa.gov/Software/NPB/                         //
 //                                                                         //
-//  Send comments or suggestions for this C version to cmp@aces.snu.ac.kr  //
+//  Send comments or suggestions for this OpenMP C version to              //
+//  cmp@aces.snu.ac.kr                                                     //
 //                                                                         //
 //          Center for Manycore Programming                                //
 //          School of Computer Science and Engineering                     //

@@ -1,5 +1,8 @@
+<<<<<<< HEAD
 (taken from: https://github.com/shenfeng/tiny-web-server)
 
+=======
+>>>>>>> merge master
 A tiny web server in C
 ======================
 

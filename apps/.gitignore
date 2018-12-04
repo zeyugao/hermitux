@@ -1,8 +1,11 @@
 *.o
 prog
 prog-dyn
+<<<<<<< HEAD
 prog_fast
 loader-sqlite
+=======
+>>>>>>> merge master
 loader-web-server
 npbparams.h
 hermitux-prof.txt

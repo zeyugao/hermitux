@@ -179,6 +179,10 @@ void handle_directory_request(int out_fd, int dir_fd, char *filename){
         }
         if ((ffd = openat(dir_fd, dp->d_name, O_RDONLY)) == -1){
             perror(dp->d_name);
+<<<<<<< HEAD
+=======
+			printf("fuuuuu\n");
+>>>>>>> merge master
             continue;
         }
         fstat(ffd, &statbuf);

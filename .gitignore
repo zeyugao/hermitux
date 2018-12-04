@@ -1,12 +1,17 @@
 *~
 #*
 
+<<<<<<< HEAD
+=======
+hermitux-kernel
+>>>>>>> merge master
 syscall-rewriter
 syscall-identification
 hermit-compiler
 musl-hermitux
 obfuscator
 obfuscator-build
+<<<<<<< HEAD
 
 prog
 prog_fast
@@ -22,3 +27,8 @@ hermitux-kernel
 syscall-rewriter
 
 *~
+=======
+prog
+prog_fast
+libiomp
+>>>>>>> merge master

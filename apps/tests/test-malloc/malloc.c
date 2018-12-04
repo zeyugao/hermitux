@@ -6,7 +6,11 @@
 // #define SIZE	(128)
 
 /* The following will rather use mmap */
+<<<<<<< HEAD:apps/tests/test-malloc/malloc.c
 #define SIZE	(512*1024*1024)
+=======
+#define SIZE	(1024*1024*1024)
+>>>>>>> merge master:apps/loader-malloc/malloc.c
 
 int main(void) {
 	char *ptr;
