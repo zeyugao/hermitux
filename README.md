@@ -26,7 +26,7 @@ Then you can directly try to [run an application](https://github.com/ssrg-vt/her
 ```
 sudo apt update
 sudo apt install git build-essential cmake nasm apt-transport-https wget \
-	libgmp-dev bsdmainutils libseccomp-dev python libelf-dev
+	libgmp-dev bsdmainutils libseccomp-dev libelf-dev
 ```
 
   - HermitCore	toolchain installed in `/opt/hermit`:
