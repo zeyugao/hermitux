@@ -15,3 +15,6 @@ boost_1_61_0
 dyninst-9.2.0
 
 hermitux-toolchain/
+
+.vscode
+.idea
