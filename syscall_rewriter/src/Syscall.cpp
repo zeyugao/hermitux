@@ -61,7 +61,7 @@ void Syscall::get_value_in_register(Block *curr_block, string reg, Address start
     /* Start searching for assignments in instructions in reverse order from the syscall */
     for (auto i = insns.rbegin(); i != insns.rend(); ++i)
     {
-        Instruction::Ptr instr = boost::shared_ptr<Instruction>(&(i->second));
+        Instruction::Ptr instr(new Dyninst::InstructionAPI::Instruction(i->second));
         Address addr = i->first;
 
         if (addr > start_from)
@@ -270,7 +270,7 @@ string Syscall::get_assembly_to_write(string objdump, map<int, string>* syscall_
 
     for (auto k = instructions.begin(); k != instructions.end(); ++k)
     {
-        Instruction::Ptr instr = boost::shared_ptr<Instruction>(&(k->second));
+        Instruction::Ptr instr(new Dyninst::InstructionAPI::Instruction(k->second));
         Address addr = k->first;
         assembly += "\t" + this->get_objdump_instruction(objdump, addr) + "\n";
         //assembly += "\t" + get_modified_instruction(instr);

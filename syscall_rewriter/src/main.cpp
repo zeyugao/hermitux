@@ -12,7 +12,6 @@ void compile_hermitcore();
 char *copy_file(char *progName);
 string get_objdump(string prog_name);
 void rewrite_syscalls(vector<Syscall *> *syscall_list, char *progName);
-vector<Instruction::Ptr> tmp;
 
 /* We rewrite only selected syscalls */
 vector<uint64_t> syscall_whitelist;
@@ -51,7 +50,6 @@ int main(int argc, char *argv[])
 	co->parse();
 
 	syscall_list = get_all_syscalls(co);
-	cout<<"back to main"<<endl;
 	printf("%ld syscalls found \n", syscall_list->size());
 
 	remove_unrewritable(syscall_list);
@@ -76,6 +74,7 @@ static inline bool is_whitelisted(uint64_t addr) {
 vector<Syscall *> *get_all_syscalls(CodeObject *codeObject)
 {
 	vector<Syscall *> *syscall_list = new vector<Syscall *>;
+
 	const CodeObject::funclist &funcs = codeObject->funcs();
 	if (funcs.size() == 0)
 	{
@@ -100,16 +99,14 @@ vector<Syscall *> *get_all_syscalls(CodeObject *codeObject)
 				cout << "No instructions";
 				continue;
 			}
-			//std::vector<Instruction::Ptr>::iterator k;
+
 			for (auto k = instructions.begin(); k != instructions.end(); ++k)
 			{
-				Instruction::Ptr instr = boost::shared_ptr<Instruction>(&(k->second));
-				tmp.push_back(instr);
+				Instruction::Ptr instr(new Dyninst::InstructionAPI::Instruction(k->second));
 				uint64_t addr = k->first;
 				Operation op = instr->getOperation();
 
 				string mnemonic = op.format();
-				//cout<<hex<<addr<<":"<<mnemonic<<endl;
 				bool already_caught = any_of(syscall_list->begin(), syscall_list->end(),
 											 [&](Syscall *s) { return addr == s->get_address(); });
 				if (!mnemonic.compare("syscall") and !already_caught)
@@ -119,11 +116,9 @@ vector<Syscall *> *get_all_syscalls(CodeObject *codeObject)
 					syscall_list->push_back(sc);
 					}
 				}
-			//cout<<"bp1"<<endl;
 			}
 		}
 	}
-	cout<<"find ok"<<endl;
 	return syscall_list;
 }
 
@@ -194,7 +189,7 @@ bool block_too_small(Block *nextblock)
 bool is_target(Block *syscall_block, Block *next_block)
 {
 	const Block::edgelist &elist = next_block->sources();
-	return !(elist.size() == 1 && (*(elist.begin()))->src() == syscall_block);
+	return !(elist.size() == 1 && (*elist.begin())->src() == syscall_block);
 }
 
 bool uses_rip(Block *next_block)
@@ -204,7 +199,7 @@ bool uses_rip(Block *next_block)
 	int count = 0;
 	for (auto k = instructions.begin(); k != instructions.end(); ++k)
 	{
-		Instruction::Ptr instr = boost::shared_ptr<Instruction>(&(k->second));
+		Instruction::Ptr instr(new Dyninst::InstructionAPI::Instruction(k->second));
 		set<RegisterAST::Ptr> rdregs;
 
 		instr->getReadSet(rdregs);
@@ -233,7 +228,7 @@ bool has_incompatible_instruction(Block *next_block)
 	int count = 0;
 	for (auto k = instructions.begin(); k != instructions.end(); ++k)
 	{
-		Instruction::Ptr instr = boost::shared_ptr<Instruction>(&(k->second));
+		Instruction::Ptr instr(new Dyninst::InstructionAPI::Instruction(k->second));
 		string mnemonic = instr->format();
 		// cout << mnemonic.find("call") << endl;
 		if (mnemonic.find('j') == 0 or mnemonic.find("call") == 0 or mnemonic.find(",$0x") != string::npos)
@@ -249,7 +244,8 @@ bool has_incompatible_instruction(Block *next_block)
 
 void write_assembly_to_file(vector<Syscall *> *syscall_list, string prog_name)
 {
-	ofstream asm_file(NEW_ASM_FILE, ios::out | ios::trunc);
+	//ofstream asm_file(NEW_ASM_FILE, ios::out | ios::trunc);
+	ofstream asm_file("./new.s", ios::out | ios::trunc);
 	if (!asm_file.is_open())
 	{
 		cout << "Failed to open file " NEW_ASM_FILE << endl;
