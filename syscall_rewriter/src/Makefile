@@ -1,7 +1,7 @@
 CXX=g++
-CXXFLAGS=-I/home/ella717/usr/dyninst/include
+CXXFLAGS=-I../../../dyninst-10.1.0/prefix/include/
 LDFLAGS=-lpatchAPI -lsymtabAPI -linstructionAPI \
-		-ldyninstAPI -lparseAPI -L/home/ella717/usr/dyninst/lib \
+		-ldyninstAPI -lparseAPI -L../../../dyninst-10.1.0/prefix/lib/ \
 		-lpthread
 SRC=$(shell ls *.cpp)
 OBJ=$(SRC:.cpp=.o)
