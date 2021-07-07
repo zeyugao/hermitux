@@ -137,7 +137,7 @@ void print_block(Block *block)
 
 	for (auto k = instructions.begin(); k != instructions.end(); ++k)
 	{
-		Instruction::Ptr instr = k->second;
+		Instruction::Ptr instr = boost::shared_ptr<Instruction>(&(k->second));
 		Address addr = k->first;
 
 		cout << hex << addr << ": " << instr->format() << endl;

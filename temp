@@ -1,0 +1,3 @@
+$ echo "deb [trusted=yes] https://dl.bintray.com/hermitcore/ubuntu bionic main" | sudo tee -a /etc/apt/sources.list
+$ sudo apt-get -qq update
+$ sudo apt-get install binutils-hermit newlib-hermit pte-hermit gcc-hermit libomp-hermit libhermit
