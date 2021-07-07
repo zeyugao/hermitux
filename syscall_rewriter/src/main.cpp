@@ -114,7 +114,7 @@ vector<Syscall *> *get_all_syscalls(CodeObject *codeObject)
 											 [&](Syscall *s) { return addr == s->get_address(); });
 				if (!mnemonic.compare("syscall") and !already_caught)
 				{
-					if(is_whitelisted(addr)) {
+					if(1||is_whitelisted(addr)) {
 					Syscall *sc = new Syscall(f, bb, instr, addr);
 					syscall_list->push_back(sc);
 					}
@@ -144,6 +144,7 @@ void remove_unrewritable(vector<Syscall *> *syscall_list)
 			nonextblock++;
 			//cout << "NNB: " << hex << sc->get_address() << endl;
 			to_remove.push_back(sc);
+			printf("block_too_small\n");
 			continue;
 		}
 
