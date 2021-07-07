@@ -38,6 +38,7 @@ int main(int argc, char *argv[])
 	/* Store all considered syscall invocation addresses */
 	for(int i=2; i<argc; i++)
 		syscall_whitelist.push_back(strtoull(argv[i], NULL, 16));
+	//push some syscalls to be written in the argv into syscall_whitelist
 
 	if (!SymtabAPI::Symtab::openFile(symTab, progNameStr))
 	{
@@ -45,6 +46,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
+	//load all code of program into CodeObject co
 	sts = new SymtabCodeSource(progName);
 	co = new CodeObject(sts);
 	co->parse();
@@ -57,9 +59,14 @@ int main(int argc, char *argv[])
 
 	if(!syscall_list->size())
 		exit(0);
-
+	//write rewrited program back
 	write_assembly_to_file(syscall_list, progNameStr);
-	compile_hermitcore();
+
+	//???
+
+	// TODO: 
+	// compile_hermitcore();
+	//write hermitcore? ver. program to program_fast
 	char *new_file = copy_file(progName);
 	rewrite_syscalls(syscall_list, new_file);
 
