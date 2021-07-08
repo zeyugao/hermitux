@@ -464,7 +464,7 @@ void Syscall::overwrite(fstream &binfile, uint64_t seg_offset, uint64_t seg_va)
     binfile.write(to_write, this->num_bytes_to_overwrite);
 
     // useless
-    binfile.write(to_write, JMP_INSTR_SIZE);
+    //binfile.write(to_write, JMP_INSTR_SIZE);
 }
 
 void Syscall::overwrite_prev(fstream &binfile, uint64_t seg_offset, uint64_t seg_va)

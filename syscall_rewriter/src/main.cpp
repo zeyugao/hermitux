@@ -18,6 +18,16 @@ void rewrite_syscalls(vector<Syscall *> *syscall_list, vector<Syscall *> *sc_pre
 /* We rewrite only selected syscalls */
 vector<uint64_t> syscall_whitelist;
 
+bool rewrite_all = false;
+bool analyse_prev = false;
+
+bool start_with(const char *pre, const char *str)
+{
+	size_t lenpre = strlen(pre),
+		   lenstr = strlen(str);
+	return lenstr < lenpre ? false : memcmp(pre, str, lenpre) == 0;
+}
+
 int main(int argc, char *argv[])
 {
 	if (argc < 3)
@@ -28,6 +38,22 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 	char *progName = argv[1];
+
+	for (int i = 2; i < argc; i++)
+	{
+		if (strcmp(argv[i], "--all") == 0)
+		{
+			rewrite_all = true;
+		}
+
+		else if (strcmp(argv[i], "--prev") == 0)
+		{
+			analyse_prev = true;
+		}
+	}
+	cout << "Rewrite all = " << (rewrite_all ? "True" : "False") << endl;
+	cout << "Analyse prev = " << (analyse_prev ? "True" : "False") << endl;
+
 	//path of program to be repaced
 	string progNameStr(progName);
 
@@ -41,7 +67,12 @@ int main(int argc, char *argv[])
 
 	/* Store all considered syscall invocation addresses */
 	for (int i = 2; i < argc; i++)
-		syscall_whitelist.push_back(strtoull(argv[i], NULL, 16));
+	{
+		if (!start_with("--", argv[i]))
+		{
+			syscall_whitelist.push_back(strtoull(argv[i], NULL, 16));
+		}
+	}
 	//push some syscalls to be written in the argv into syscall_whitelist
 
 	if (!SymtabAPI::Symtab::openFile(symTab, progNameStr))
@@ -59,6 +90,12 @@ int main(int argc, char *argv[])
 	printf("%ld syscalls found \n", syscall_list->size());
 
 	remove_unrewritable(syscall_list, sc_prev_list);
+
+	if (!analyse_prev)
+	{
+		sc_prev_list->clear();
+	}
+
 	printf("%zd syscalls will be overwritten\n", syscall_list->size());
 
 	if (!(syscall_list->size() + sc_prev_list->size()))
@@ -124,7 +161,7 @@ vector<Syscall *> *get_all_syscalls(CodeObject *codeObject)
 											 { return addr == s->get_address(); });
 				if (!mnemonic.compare("syscall") and !already_caught)
 				{
-					if (1 || is_whitelisted(addr))
+					if (rewrite_all || is_whitelisted(addr))
 					{
 						Syscall *sc = new Syscall(f, bb, instr, addr);
 						syscall_list->push_back(sc);
