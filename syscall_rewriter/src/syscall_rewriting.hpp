@@ -71,7 +71,7 @@ class Syscall
 	void set_prev_block();
 	string get_modified_instruction(Instruction::Ptr instr);
 	string get_objdump_instruction(string objdump, Address addr);
-	int32_t get_displacement();
+	int32_t get_displacement(bool prev = false);
 	void get_value_in_register(Block *curr_block, string reg, Address start_from, vector<Block *> *visited, vector<int> *possible_sc_nums);
 
   public:
