@@ -266,8 +266,33 @@ int32_t Syscall::get_displacement()
     return -displacement;
 }
 
+// trim from start
+static inline std::string &ltrim(std::string &s)
+{
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(),
+                                    std::not1(std::ptr_fun<int, int>(std::isspace))));
+    return s;
+}
+
+// trim from end
+static inline std::string &rtrim(std::string &s)
+{
+    s.erase(std::find_if(s.rbegin(), s.rend(),
+                         std::not1(std::ptr_fun<int, int>(std::isspace)))
+                .base(),
+            s.end());
+    return s;
+}
+
+// trim from both ends
+static inline std::string &trim(std::string &s)
+{
+    return ltrim(rtrim(s));
+}
+
 string Syscall::get_assembly_to_write(string objdump, map<int, string> *syscall_func_map)
 {
+    //cout << objdump << endl;
     //输入objdump是binary的反汇编，syscall_func_map是可支持syscall的序号与内容的映射（由./supported_syscalls.csv得到的）
     string assembly = "";
     assembly += this->get_dest_label() + ":\n";
@@ -304,13 +329,24 @@ string Syscall::get_assembly_to_write(string objdump, map<int, string> *syscall_
 
     for (auto k = instructions.begin(); k != instructions.end(); ++k)
     {
+        cout << 1 << endl;
         Instruction::Ptr instr(new Dyninst::InstructionAPI::Instruction(k->second));
         Address addr = k->first;
         auto instr_to_insert = this->get_objdump_instruction(objdump, addr);
         str_replace(instr_to_insert, std::string("PTR "), std::string(""));
+
+        if (instr_to_insert[0] == 'j')
+        {
+            rtrim(instr_to_insert);
+            int last_space = instr_to_insert.rfind(' ');
+
+            instr_to_insert = instr_to_insert.substr(0, last_space) + "0x" + instr_to_insert.substr(last_space + 1);
+        }
+
         assembly += "\t" + instr_to_insert + "\n";
         //assembly += "\t" + get_modified_instruction(instr);
         this->num_bytes_to_overwrite += instr->size();
+        cout << this->num_bytes_to_overwrite << endl;
         //add the length after syscall
         if (this->num_bytes_to_overwrite >= 5)
         {
@@ -319,7 +355,6 @@ string Syscall::get_assembly_to_write(string objdump, map<int, string> *syscall_
             uint64_t addr = k->first + instr->size();
             w[1] = 0x0;
             w[0] = addr & 0xffffffff;
-
             /* Return to user application */
             sprintf(hexaddr, "0x%08x", w[0]);
             assembly += "\tpush " + string(hexaddr) + "\n";
@@ -379,6 +414,7 @@ string Syscall::get_assembly_to_write_prev(string objdump, map<int, string> *sys
         {
             string syscall_func = func_it->second;
             assembly += "\tmov rcx,r10 \n";
+            assembly += "\textern " + syscall_func + "\n";
             assembly += "\tcall " + syscall_func + "\n";
         }
         else
