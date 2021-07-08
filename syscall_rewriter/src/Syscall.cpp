@@ -202,20 +202,22 @@ string Syscall::get_objdump_instruction(string objdump, Address addr)
 
 int32_t Syscall::get_displacement()
 {
+    // get an address to jump to
     FILE *fpipe;
     string cmd = "nm " + string(HERMIT_EXECUTABLE_PATH) + " | grep " + get_dest_label();
-    char line[256];
+    //nm hermitux | grep syscall_xxxxxx_destination
+    char line[256]{'\0'};
     uint64_t dest_address;
 	int32_t displacement;
 
-    if (!(fpipe = (FILE *)popen(cmd.c_str(), "r")))
+    fpipe = popen(cmd.c_str(), "r");
+    if (!fpipe)
     {
         perror("Problems with nm pipe");
         exit(-1);
     }
 
-    while (fgets(line, sizeof line, fpipe))
-        ;
+    fgets(line, sizeof(line), fpipe);
     pclose(fpipe);
 
     if (strlen(line) == 0)
