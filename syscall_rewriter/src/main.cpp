@@ -1,17 +1,18 @@
 #include "syscall_rewriting.hpp"
 
 vector<Syscall *> *get_all_syscalls(CodeObject *codeObject);
-void remove_unrewritable(vector<Syscall *> *syscall_list);
+void remove_unrewritable(vector<Syscall *> *syscall_list, vector<Syscall *> *sc_prev_list);
 bool block_too_small(Block *next_block);
 bool is_target(Block *syscall_block, Block *next_block);
 bool uses_rip(Block *next_block);
 bool has_incompatible_instruction(Block *next_block);
 void rewrite_syscall(Syscall *syscall);
-void write_assembly_to_file(vector<Syscall *> *syscall_list, string prog_name);
+void write_assembly_to_file(vector<Syscall *> *syscall_list, vector<Syscall *> *sc_prev_list, string prog_name);
 void compile_hermitcore();
+uint64_t prev_use_rip(Block *sc_block, Address prev_addr, Address sc_addr);
 char *copy_file(char *progName);
 string get_objdump(string prog_name);
-void rewrite_syscalls(vector<Syscall *> *syscall_list, char *progName);
+void rewrite_syscalls(vector<Syscall *> *syscall_list, vector<Syscall *> *sc_prev_list, char *progName);
 
 /* We rewrite only selected syscalls */
 vector<uint64_t> syscall_whitelist;
@@ -34,10 +35,11 @@ int main(int argc, char *argv[])
 	PatchObject *po, *clonedpo;
 	Instruction::Ptr instr;
 	SymtabAPI::Symtab *symTab;
-	vector<Syscall *> *syscall_list;
+	vector<Syscall *> *syscall_list = new vector<Syscall *>();
+	vector<Syscall *> *sc_prev_list = new vector<Syscall *>();
 
 	/* Store all considered syscall invocation addresses */
-	for(int i=2; i<argc; i++)
+	for (int i = 2; i < argc; i++)
 		syscall_whitelist.push_back(strtoull(argv[i], NULL, 16));
 	//push some syscalls to be written in the argv into syscall_whitelist
 
@@ -55,29 +57,30 @@ int main(int argc, char *argv[])
 	syscall_list = get_all_syscalls(co);
 	printf("%ld syscalls found \n", syscall_list->size());
 
-	remove_unrewritable(syscall_list);
+	remove_unrewritable(syscall_list, sc_prev_list);
 	printf("%zd syscalls will be overwritten\n", syscall_list->size());
 
-	if(!syscall_list->size()) // no syscall can be rewritten
+	if (!(syscall_list->size() + sc_prev_list->size()))
 		exit(0);
 	//wtire to new.s
-	write_assembly_to_file(syscall_list, progNameStr);
+	write_assembly_to_file(syscall_list, sc_prev_list, progNameStr);
 
 	//???
 
-	// TODO: 
+	// TODO:
 	compile_hermitcore();
 	//write hermitcore? ver. program to program_fast
 	char *new_file = copy_file(progName);
-	rewrite_syscalls(syscall_list, new_file);
+	rewrite_syscalls(syscall_list, sc_prev_list, new_file);
 
 	printf("Rewriting completed successfully\n");
 	return 0;
 }
 
-static inline bool is_whitelisted(uint64_t addr) {
-	return (std::find(syscall_whitelist.begin(), syscall_whitelist.end(), addr)
-			!= syscall_whitelist.end()); }
+static inline bool is_whitelisted(uint64_t addr)
+{
+	return (std::find(syscall_whitelist.begin(), syscall_whitelist.end(), addr) != syscall_whitelist.end());
+}
 
 vector<Syscall *> *get_all_syscalls(CodeObject *codeObject)
 {
@@ -116,12 +119,14 @@ vector<Syscall *> *get_all_syscalls(CodeObject *codeObject)
 
 				string mnemonic = op.format();
 				bool already_caught = any_of(syscall_list->begin(), syscall_list->end(),
-											 [&](Syscall *s) { return addr == s->get_address(); });
+											 [&](Syscall *s)
+											 { return addr == s->get_address(); });
 				if (!mnemonic.compare("syscall") and !already_caught)
 				{
-					if(1||is_whitelisted(addr)) {
-					Syscall *sc = new Syscall(f, bb, instr, addr);
-					syscall_list->push_back(sc);
+					if (is_whitelisted(addr))
+					{
+						Syscall *sc = new Syscall(f, bb, instr, addr);
+						syscall_list->push_back(sc);
 					}
 				}
 			}
@@ -129,63 +134,50 @@ vector<Syscall *> *get_all_syscalls(CodeObject *codeObject)
 	}
 	return syscall_list;
 }
-
-void remove_unrewritable(vector<Syscall *> *syscall_list)
+void remove_unrewritable(vector<Syscall *> *syscall_list, vector<Syscall *> *sc_prev_list)
 {
 	vector<Syscall *> to_remove;
-	int nonextblock = 0, unwantedbranch = 0, ripdependent = 0, hasjmp = 0;
-
+	//int nonextblock = 0, unwantedbranch = 0, ripdependent = 0, hasjmp = 0;
+	int prevc = 0;
 	for (auto it = syscall_list->begin(); it != syscall_list->end(); ++it)
 	{
+		int coz = 0;
 		Syscall *sc = *it;
 		Block *scblock = sc->get_sc_block();
 		Block *nextblock = sc->get_next_block();
-
+		cout << hex << sc->get_address() << endl;
 		/* No block following the syscall or next block is too small. */
 		if (block_too_small(nextblock))
-		{
-			nonextblock++;
-			//cout << "NNB: " << hex << sc->get_address() << endl;
-			to_remove.push_back(sc);
-			continue;
-		}
-
+			coz |= 1;
 		/* Syscall block should be the only source for the next block */
-		if (is_target(scblock, nextblock))
-		{
-			unwantedbranch++;
-			//cout << "UB: " << hex << sc->get_address() << endl;
-			to_remove.push_back(sc);
-			continue;
-		}
-
+		//if (is_target(scblock, nextblock)) coz|=2;
+		//cout<<"coz="<<coz<<endl;
 		/* If replaced instructions use the value of RIP */
-		if (uses_rip(nextblock))
+		//if (uses_rip(nextblock)) coz|=4;
+		//if (has_incompatible_instruction(nextblock)) coz|=8;
+		cout << "coz=" << coz << endl;
+		if (coz)
 		{
-			ripdependent++;
-			//cout << "RIP:" << hex << sc->get_address() << endl;
 			to_remove.push_back(sc);
-			continue;
-		}
-		/*
-		if (uses_rip(scblock))
-		{
-			ripdependent++;
-			to_remove.push_back(sc);
-			continue;
-		}
-		*/
-		 
-
-		if (has_incompatible_instruction(nextblock))
-		{
-			hasjmp++;
-			//cout << "JMP:" << hex << sc->get_address() << endl;
-			to_remove.push_back(sc);
-			continue;
+			if (sc->get_prev_address() == -1 || sc->get_prev_len() < 3)
+			{
+				cout << "this syscall can't be rewrite now\n";
+			}
+			else
+			{
+				if (prev_use_rip(scblock, sc->get_prev_address(), sc->get_address()))
+				{
+					cout << "rip problem" << endl;
+				}
+				else
+				{
+					sc_prev_list->push_back(sc);
+					prevc++;
+				}
+			}
 		}
 	}
-	cout << dec;
+	cout << oct << prevc << " sc will be prev write." << endl;
 	/* printf("NNB: %d \nUB: %d \nRIP: %d \nJMP: %d\n",
 		   nonextblock, unwantedbranch, ripdependent, hasjmp); */
 
@@ -206,6 +198,32 @@ bool is_target(Block *syscall_block, Block *next_block)
 {
 	const Block::edgelist &elist = next_block->sources();
 	return !(elist.size() == 1 && (*elist.begin())->src() == syscall_block);
+}
+
+uint64_t prev_use_rip(Block *sc_block, Address prev_addr, Address sc_addr)
+{
+	Block::Insns instructions;
+	sc_block->getInsns(instructions);
+	for (auto k = instructions.begin(); k != instructions.end(); ++k)
+	{
+		Address addr = k->first;
+		if (addr < prev_addr)
+			continue;
+		if (addr == sc_addr)
+			break;
+		Instruction::Ptr instr(new Dyninst::InstructionAPI::Instruction(k->second));
+		set<RegisterAST::Ptr> rdregs;
+		instr->getReadSet(rdregs);
+		for (auto i = rdregs.begin(); i != rdregs.end(); ++i)
+		{
+			RegisterAST::Ptr reg = *i;
+			if (!reg->format().compare("RIP"))
+			{
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 bool uses_rip(Block *next_block)
@@ -258,7 +276,7 @@ bool has_incompatible_instruction(Block *next_block)
 	return false;
 }
 
-void write_assembly_to_file(vector<Syscall *> *syscall_list, string prog_name)
+void write_assembly_to_file(vector<Syscall *> *syscall_list, vector<Syscall *> *sc_prev_list, string prog_name)
 {
 	ofstream asm_file(NEW_ASM_FILE, ios::out | ios::trunc);
 	if (!asm_file.is_open())
@@ -283,6 +301,15 @@ void write_assembly_to_file(vector<Syscall *> *syscall_list, string prog_name)
 
 		string to_write = sc->get_assembly_to_write(dump, syscall_func_map);
 		asm_file << to_write;
+		cout << to_write << endl;
+	}
+	for (auto i = sc_prev_list->begin(); i != sc_prev_list->end(); i++)
+	{
+		Syscall *sc = *i;
+
+		string to_write = sc->get_assembly_to_write_prev(dump, syscall_func_map, sc->get_address(), sc->get_prev_address());
+		asm_file << to_write;
+		cout << to_write << endl;
 	}
 
 	asm_file.close();
@@ -294,9 +321,9 @@ void compile_hermitcore()
 	string cmd1 = "", cmd2 = "", cmd3 = "";
 	int ret1, ret2, ret3;
 
-	cmd1 += "make clean -C " + string(HERMITCORE_BUILD_DIR);// + " &> /dev/null";
-	cmd2 += "make -j$(nproc) -C " + string(HERMITCORE_BUILD_DIR);// + " &> /dev/null";
-	cmd3 += "make -j$(nproc) install -C " + string(HERMITCORE_BUILD_DIR);// + " &> /dev/null";
+	cmd1 += "make clean -C " + string(HERMITCORE_BUILD_DIR);			  // + " &> /dev/null";
+	cmd2 += "make -j$(nproc) -C " + string(HERMITCORE_BUILD_DIR);		  // + " &> /dev/null";
+	cmd3 += "make -j$(nproc) install -C " + string(HERMITCORE_BUILD_DIR); // + " &> /dev/null";
 
 	ret1 = system(cmd1.c_str());
 	ret2 = system(cmd2.c_str());
@@ -348,7 +375,7 @@ string get_objdump(string prog_name)
 	return dump;
 }
 
-void rewrite_syscalls(vector<Syscall *> *syscall_list, char *fileName)
+void rewrite_syscalls(vector<Syscall *> *syscall_list, vector<Syscall *> *sc_prev_list, char *fileName)
 {
 	ElfFile *ef = new ElfFile(fileName);
 
@@ -363,10 +390,19 @@ void rewrite_syscalls(vector<Syscall *> *syscall_list, char *fileName)
 		exit(-1);
 	}
 
+	int ite = 0;
 	for (auto i = syscall_list->begin(); i != syscall_list->end(); i++)
 	{
+		cout << ++ite << endl;
 		Syscall *sc = *i;
 		sc->overwrite(binfile, seg_offset, seg_va);
 	}
+	for (auto i = sc_prev_list->begin(); i != sc_prev_list->end(); i++)
+	{
+		cout << ++ite << endl;
+		Syscall *sc = *i;
+		sc->overwrite_prev(binfile, seg_offset, seg_va);
+	}
+
 	binfile.close();
 }
