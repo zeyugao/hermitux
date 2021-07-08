@@ -8,6 +8,7 @@ Syscall::Syscall(Function *func, Block *block, Instruction::Ptr &instr, uint64_t
     this->sc_block = block;
     this->set_next_block();
     this->num_bytes_to_overwrite = 2;
+    this->set_prev_block();
 }
 
 Function *Syscall::get_function()
@@ -30,6 +31,16 @@ Address Syscall::get_address()
     return this->address;
 }
 
+Address Syscall::get_prev_address()
+{
+    return this->write_prev_addr;
+}
+
+uint64_t Syscall::get_prev_len()
+{
+    return this->address - this->write_prev_addr;
+}
+
 Instruction::Ptr Syscall::get_instruction()
 {
     return this->instruction;
@@ -41,7 +52,22 @@ void Syscall::set_next_block()
     CodeRegion *cr = this->sc_block->region();
     this->next_block = co->findBlockByEntry(cr, this->address + 2);
 }
-
+void Syscall::set_prev_block()
+{
+    Block::Insns instructions;
+    this->sc_block->getInsns(instructions);
+    this->write_prev_addr = -1;
+    for (auto k = instructions.begin(); k != instructions.end(); k++)
+    {
+        Instruction::Ptr instr(new Dyninst::InstructionAPI::Instruction(k->second));
+        int addr = k->first;
+        if (this->address - addr < 3)
+            break;
+        this->write_prev_addr = addr;
+    }
+    cout << "Last addr= " << hex << this->write_prev_addr << endl;
+    cout << "len=" << this->address - this->write_prev_addr << endl;
+}
 vector<int> Syscall::get_possible_sc_nos(void)
 {
     vector<Block *> *visited = new vector<Block *>();
@@ -207,7 +233,8 @@ int32_t Syscall::get_displacement()
     // get an address to jump to
     FILE *fpipe;
     string cmd = "nm " + string(HERMIT_EXECUTABLE_PATH) + " | grep " + get_dest_label();
-    cout << cmd << std::endl;;
+    cout << cmd << std::endl;
+    ;
     //nm hermitux | grep syscall_xxxxxx_destination
     char line[256]{'\0'};
     uint64_t dest_address;
@@ -285,7 +312,7 @@ string Syscall::get_assembly_to_write(string objdump, map<int, string> *syscall_
         //assembly += "\t" + get_modified_instruction(instr);
         this->num_bytes_to_overwrite += instr->size();
         //add the length after syscall
-        if (this->num_bytes_to_overwrite >= EXTRA_OW_BYTES)
+        if (this->num_bytes_to_overwrite >= 5)
         {
             uint32_t w[2];
             char hexaddr[16];
@@ -300,6 +327,81 @@ string Syscall::get_assembly_to_write(string objdump, map<int, string> *syscall_
 
             break;
         }
+    }
+
+    this->sc_block->getInsns(instructions);
+    for (auto k = instructions.begin(); k != instructions.end(); ++k)
+    {
+        Instruction::Ptr instr(new Dyninst::InstructionAPI::Instruction(k->second));
+        cout << instr->format() << endl;
+    }
+
+    assembly += "\n";
+    return assembly;
+}
+
+string Syscall::get_assembly_to_write_prev(string objdump, map<int, string> *syscall_func_map, Address sc_addr, Address prev_addr)
+{
+    string assembly = "";
+    assembly += this->get_dest_label() + ":\n";
+
+    vector<int> possible_sc_nos = this->get_possible_sc_nos();
+    bool indeterminable_syscall = possible_sc_nos.size() != 1 || possible_sc_nos[0] < 0;
+    Block::Insns instructions;
+    this->sc_block->getInsns(instructions);
+
+    for (auto k = instructions.begin(); k != instructions.end(); ++k)
+    {
+        Address addr = k->first;
+        if (addr < prev_addr)
+            continue;
+        if (addr == sc_addr)
+            break;
+        Instruction::Ptr instr(new Dyninst::InstructionAPI::Instruction(k->second));
+        cout << instr->format() << endl;
+        auto instr_to_insert = this->get_objdump_instruction(objdump, addr);
+        str_replace(instr_to_insert, std::string("PTR "), std::string(""));
+        assembly += "\t" + instr_to_insert + "\n";
+        //assembly += "\t" + get_modified_instruction(instr);
+        this->num_bytes_to_overwrite += instr->size();
+    }
+
+    if (indeterminable_syscall)
+    {
+        assembly += "\tcall " SYSCALL_PROLOGUE_FUNC "\n";
+    }
+    else
+    {
+        int syscall_no = possible_sc_nos[0];
+        auto func_it = syscall_func_map->find(syscall_no);
+
+        if (func_it != syscall_func_map->end())
+        {
+            string syscall_func = func_it->second;
+            assembly += "\tmov rcx,r10 \n";
+            assembly += "\tcall " + syscall_func + "\n";
+        }
+        else
+        {
+            assembly += "\tcall " SYSCALL_PROLOGUE_FUNC "\n";
+        }
+    }
+    uint32_t w[2];
+    char hexaddr[16];
+    uint64_t addr = sc_addr + 2;
+    w[1] = 0x0;
+    w[0] = addr & 0xffffffff;
+
+    /* Return to user application */
+    sprintf(hexaddr, "0x%08x", w[0]);
+    assembly += "\tpush " + string(hexaddr) + "\n";
+    assembly += "\tret \n";
+
+    this->sc_block->getInsns(instructions);
+    for (auto k = instructions.begin(); k != instructions.end(); ++k)
+    {
+        Instruction::Ptr instr(new Dyninst::InstructionAPI::Instruction(k->second));
+        cout << instr->format() << endl;
     }
 
     assembly += "\n";
@@ -327,4 +429,25 @@ void Syscall::overwrite(fstream &binfile, uint64_t seg_offset, uint64_t seg_va)
 
     // useless
     binfile.write(to_write, JMP_INSTR_SIZE);
+}
+
+void Syscall::overwrite_prev(fstream &binfile, uint64_t seg_offset, uint64_t seg_va)
+{
+    int32_t displacement = this->get_displacement(); // No warning?
+    cout << "disp= " << hex << displacement << "\nlen= " << this->get_prev_len() + 2 << endl;
+    uint64_t write_at = seg_offset + (this->write_prev_addr - seg_va);
+    char *to_write = new char[this->get_prev_len() + 2];
+    string padding = "";
+
+    memset(to_write, REL_JMP_OPCODE, 1);
+    for (int i = 0; i < 4; i++)
+    {
+        char foo = (displacement >> (i * 8)) & 0xFF;
+        memset(to_write + i + 1, foo, 1);
+    }
+    memset(to_write + JMP_INSTR_SIZE, 0x90, this->get_prev_len() + 2 - JMP_INSTR_SIZE);
+
+    binfile.seekp(write_at);
+    binfile.write(to_write, this->get_prev_len() + 2);
+    //binfile.write(to_write, JMP_INSTR_SIZE);
 }

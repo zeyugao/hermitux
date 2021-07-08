@@ -61,11 +61,13 @@ class Syscall
 	Function *function;
 	Instruction::Ptr instruction;
 	Address address;
+	Address write_prev_addr;
 	Block *sc_block;
 	Block *next_block;
 	int num_bytes_to_overwrite;
 
 	void set_next_block();
+	void set_prev_block();
 	string get_modified_instruction(Instruction::Ptr instr);
 	string get_objdump_instruction(string objdump, Address addr);
 	int32_t get_displacement();
@@ -77,10 +79,14 @@ class Syscall
 	Block *get_sc_block();
 	Block *get_next_block();
 	Address get_address();
+	Address get_prev_address();
+	uint64_t get_prev_len();
 	Instruction::Ptr get_instruction();
 	string get_dest_label();
 	string get_assembly_to_write(string objdump, map<int, string>* syscall_func_map);
+	string get_assembly_to_write_prev(string objdump, map<int, string>* syscall_func_map,Address sc_addr,Address prev_addr);
 	void overwrite(fstream &binfile, uint64_t offset, uint64_t va);
+	void overwrite_prev(fstream &binfile, uint64_t offset, uint64_t va);
 	vector<int> get_possible_sc_nos(void);
 };
 
