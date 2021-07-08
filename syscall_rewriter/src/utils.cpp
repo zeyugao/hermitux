@@ -6,44 +6,44 @@ string get_syscall_asm_func()
     assembly += SYSCALL_PROLOGUE_FUNC ":\n";
 
     /* Save all registers on the stack */
-    // assembly += "\tpush \%r15\n";
-    // assembly += "\tpush \%r14\n";
-    // assembly += "\tpush \%r13\n";
-    // assembly += "\tpush \%r12\n";
-    // assembly += "\tpush \%r11\n";
-    // assembly += "\tpush \%rcx\n";
-    // assembly += "\tpush \%rbx\n";
+    // assembly += "\tpush r15\n";
+    // assembly += "\tpush r14\n";
+    // assembly += "\tpush r13\n";
+    // assembly += "\tpush r12\n";
+    // assembly += "\tpush r11\n";
+    // assembly += "\tpush rcx\n";
+    // assembly += "\tpush rbx\n";
 
     /* Now we push the reigsters that are used to pass arguments */
-    assembly += "\tpush \%rax\n";
-    assembly += "\tpush \%rdi\n";
-    assembly += "\tpush \%rsi\n";
-    assembly += "\tpush \%rdx\n";
-    assembly += "\tpush \%r10\n";
-    assembly += "\tpush \%r8\n";
-    assembly += "\tpush \%r9\n";
+    assembly += "\tpush rax\n";
+    assembly += "\tpush rdi\n";
+    assembly += "\tpush rsi\n";
+    assembly += "\tpush rdx\n";
+    assembly += "\tpush r10\n";
+    assembly += "\tpush r8\n";
+    assembly += "\tpush r9\n";
 
     /*  Set the first argument to the handler to be a pointer to struct
         fast_fs_state which we just pushed onto the stack */
-    assembly += "\tmov \%rsp,\%rdi\n";
+    assembly += "\tmov rdi, rsp\n";
     assembly += "\tcall fast_syscall_handler\n";
     
     /* Restore all the registers in the order they were pushed */
-    assembly += "\tpop \%r9\n";
-    assembly += "\tpop \%r8\n";
-    assembly += "\tpop \%r10\n";
-    assembly += "\tpop \%rdx\n";
-    assembly += "\tpop \%rsi\n";
-    assembly += "\tpop \%rdi\n";
-    assembly += "\tpop \%rax\n";
+    assembly += "\tpop r9\n";
+    assembly += "\tpop r8\n";
+    assembly += "\tpop r10\n";
+    assembly += "\tpop rdx\n";
+    assembly += "\tpop rsi\n";
+    assembly += "\tpop rdi\n";
+    assembly += "\tpop rax\n";
 
-    // assembly += "\tpop \%rbx\n";
-    // assembly += "\tpop \%rcx\n";
-    // assembly += "\tpop \%r11\n";
-    // assembly += "\tpop \%r12\n";
-    // assembly += "\tpop \%r13\n";
-    // assembly += "\tpop \%r14\n";
-    // assembly += "\tpop \%r15\n";
+    // assembly += "\tpop rbx\n";
+    // assembly += "\tpop rcx\n";
+    // assembly += "\tpop r11\n";
+    // assembly += "\tpop r12\n";
+    // assembly += "\tpop r13\n";
+    // assembly += "\tpop r14\n";
+    // assembly += "\tpop r15\n";
     
     assembly += "\tret\n\n";
     return assembly;
@@ -59,13 +59,13 @@ string get_syscall_asm_func_test()
     /* Save all registers on the stack */
     for (int i = 0; i < EXTRA_PUSHES; i++)
     {
-	    assembly += "push \%r15\n";
-	    assembly += "push \%r14\n";
-	    assembly += "push \%r13\n";
-	    assembly += "push \%r12\n";
-	    assembly += "push \%r11\n";
-	    assembly += "push \%rcx\n";
-	    assembly += "push \%rbx\n";
+	    assembly += "push r15\n";
+	    assembly += "push r14\n";
+	    assembly += "push r13\n";
+	    assembly += "push r12\n";
+	    assembly += "push r11\n";
+	    assembly += "push rcx\n";
+	    assembly += "push rbx\n";
     }
 
     for (int i = 0; i < EXTRA_CALLS; i++)
@@ -74,37 +74,37 @@ string get_syscall_asm_func_test()
     }
     
     /* Now we push the reigsters that are used to pass arguments */
-    assembly += "push \%rax\n";
-    assembly += "push \%rdi\n";
-    assembly += "push \%rsi\n";
-    assembly += "push \%rdx\n";
-    assembly += "push \%r10\n";
-    assembly += "push \%r8\n";
-    assembly += "push \%r9\n";
+    assembly += "push rax\n";
+    assembly += "push rdi\n";
+    assembly += "push rsi\n";
+    assembly += "push rdx\n";
+    assembly += "push r10\n";
+    assembly += "push r8\n";
+    assembly += "push r9\n";
 
     /*  Set the first argument to the handler to be a pointer to struct
         fast_fs_state which we just pushed onto the stack */
-    assembly += "mov \%rsp,\%rdi\n";
+    assembly += "mov rdi, rsp\n";
     assembly += "call fast_syscall_handler\n";
     
     /* Restore all the registers in the order they were pushed */
-    assembly += "pop \%r9\n";
-    assembly += "pop \%r8\n";
-    assembly += "pop \%r10\n";
-    assembly += "pop \%rdx\n";
-    assembly += "pop \%rsi\n";
-    assembly += "pop \%rdi\n";
-    assembly += "pop \%rax\n";
+    assembly += "pop r9\n";
+    assembly += "pop r8\n";
+    assembly += "pop r10\n";
+    assembly += "pop rdx\n";
+    assembly += "pop rsi\n";
+    assembly += "pop rdi\n";
+    assembly += "pop rax\n";
 
     for(int i = 0; i < EXTRA_PUSHES; i++)
     {
-	    assembly += "pop \%rbx\n";
-	    assembly += "pop \%rcx\n";
-	    assembly += "pop \%r11\n";
-	    assembly += "pop \%r12\n";
-	    assembly += "pop \%r13\n";
-	    assembly += "pop \%r14\n";
-	    assembly += "pop \%r15\n";
+	    assembly += "pop rbx\n";
+	    assembly += "pop rcx\n";
+	    assembly += "pop r11\n";
+	    assembly += "pop r12\n";
+	    assembly += "pop r13\n";
+	    assembly += "pop r14\n";
+	    assembly += "pop r15\n";
     }
     assembly += "ret\n\n";
     return assembly;
