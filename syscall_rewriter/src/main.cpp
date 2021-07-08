@@ -234,7 +234,7 @@ void remove_unrewritable(vector<Syscall *> *syscall_list, vector<Syscall *> *sc_
 			}
 		}
 	}
-	cout << oct << prevc << " sc will be prev write." << endl;
+	cout << dec << prevc << " sc will be prev write." << endl;
 	/* printf("NNB: %d \nUB: %d \nRIP: %d \nJMP: %d\n",
 		   nonextblock, unwantedbranch, ripdependent, hasjmp); */
 

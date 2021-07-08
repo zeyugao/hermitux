@@ -228,7 +228,7 @@ string Syscall::get_objdump_instruction(string objdump, Address addr)
     return objdump.substr(insn_start, insn_end - insn_start);
 }
 
-int32_t Syscall::get_displacement()
+int32_t Syscall::get_displacement(bool prev = false)
 {
     // get an address to jump to
     FILE *fpipe;
@@ -262,7 +262,8 @@ int32_t Syscall::get_displacement()
 	 * code and the desitination in kernel code. Kernel code is mapped
 	 * @0x2000000 and application at 0x4000000. So the displacement is always
 	 * negative! */
-    displacement = (this->address + JMP_INSTR_SIZE) - dest_address;
+
+    displacement = (prev ?this->write_prev_addr: this->address) + JMP_INSTR_SIZE) - dest_address;
     return -displacement;
 }
 
