@@ -20,9 +20,9 @@
 #define JMP_INSTR_SIZE 5
 #define EXTRA_OW_BYTES (JMP_INSTR_SIZE - SC_INSTR_SIZE)
 #define REL_JMP_OPCODE 0xE9
-#define HERMITCORE_ROOT "../../hermitux-kernel/"
+#define HERMITCORE_ROOT "../../../hermitux-kernel/"
 #define HERMITCORE_BUILD_DIR HERMITCORE_ROOT "/build"
-#define NEW_ASM_FILE HERMITCORE_ROOT "/arch/x86/kernel/syscall-veneer.s"
+#define NEW_ASM_FILE HERMITCORE_ROOT "/arch/x86/kernel/syscall-veneer.asm"
 #define HERMIT_EXECUTABLE_PATH HERMITCORE_ROOT "/prefix/x86_64-hermit/extra/tests/hermitux"
 #define SYSCALL_PROLOGUE_FUNC "fast_syscall_prologue"
 #define SYSCALL_CSV_FILE "./supported_syscalls.csv"
@@ -39,6 +39,7 @@ void print_block(Block *block);
 string get_syscall_asm_func(void);
 string get_syscall_asm_func_test(void);
 map<int, string>* get_syscall_func_map(void);
+bool str_replace(std::string& str, const std::string& from, const std::string& to);
 
 class ElfFile
 {
