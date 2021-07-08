@@ -26,6 +26,7 @@ string get_syscall_asm_func()
     /*  Set the first argument to the handler to be a pointer to struct
         fast_fs_state which we just pushed onto the stack */
     assembly += "\tmov rdi, rsp\n";
+    assembly += "\textern fast_syscall_handler\n";
     assembly += "\tcall fast_syscall_handler\n";
     
     /* Restore all the registers in the order they were pushed */
@@ -112,7 +113,9 @@ string get_syscall_asm_func_test()
 
 map<int, string>* get_syscall_func_map(void)
 {
+    // 获得可支持syscall的序号与内容的映射并返回映射结果
     map<int, string>* sfm = new map<int, string>();
+    // 打开可支持的syscall文件: supported_syscalls.csv
     ifstream syscall_file(SYSCALL_CSV_FILE, ifstream::in);
     if(!syscall_file)
     {
@@ -122,9 +125,11 @@ map<int, string>* get_syscall_func_map(void)
     
     int sc_num;
     string sc_func;
+    // supported_syscalls.csv的格式：(int)number (string)syscall
     while (syscall_file >> sc_num >> sc_func)
     {
         sfm->insert(pair<int, string>(sc_num, sc_func));
+        // 将可支持syscall的序号与内容映射（对应）一下并存入sfm中
     }
 
     return sfm;
@@ -143,4 +148,12 @@ void print_block(Block *block)
 		cout << hex << addr << ": " << instr->format() << endl;
 	}
 	cout << dec;
+}
+
+bool str_replace(std::string& str, const std::string& from, const std::string& to) {
+    size_t start_pos = str.find(from);
+    if(start_pos == std::string::npos)
+        return false;
+    str.replace(start_pos, from.length(), to);
+    return true;
 }

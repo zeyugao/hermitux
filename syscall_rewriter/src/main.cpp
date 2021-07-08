@@ -26,6 +26,7 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 	char *progName = argv[1];
+	//path of program to be repaced
 	string progNameStr(progName);
 
 	SymtabCodeSource *sts;
@@ -57,9 +58,9 @@ int main(int argc, char *argv[])
 	remove_unrewritable(syscall_list);
 	printf("%zd syscalls will be overwritten\n", syscall_list->size());
 
-	if(!syscall_list->size())
+	if(!syscall_list->size()) // no syscall can be rewritten
 		exit(0);
-	//write rewrited program back
+	//wtire to new.s
 	write_assembly_to_file(syscall_list, progNameStr);
 
 	//???
@@ -146,7 +147,6 @@ void remove_unrewritable(vector<Syscall *> *syscall_list)
 			nonextblock++;
 			//cout << "NNB: " << hex << sc->get_address() << endl;
 			to_remove.push_back(sc);
-			printf("block_too_small\n");
 			continue;
 		}
 
@@ -167,6 +167,15 @@ void remove_unrewritable(vector<Syscall *> *syscall_list)
 			to_remove.push_back(sc);
 			continue;
 		}
+		/*
+		if (uses_rip(scblock))
+		{
+			ripdependent++;
+			to_remove.push_back(sc);
+			continue;
+		}
+		*/
+		 
 
 		if (has_incompatible_instruction(nextblock))
 		{
@@ -251,15 +260,14 @@ bool has_incompatible_instruction(Block *next_block)
 
 void write_assembly_to_file(vector<Syscall *> *syscall_list, string prog_name)
 {
-	//ofstream asm_file(NEW_ASM_FILE, ios::out | ios::trunc);
-	ofstream asm_file("./new.s", ios::out | ios::trunc);
+	ofstream asm_file(NEW_ASM_FILE, ios::out | ios::trunc);
 	if (!asm_file.is_open())
 	{
 		cout << "Failed to open file " NEW_ASM_FILE << endl;
 		exit(-1);
 	}
 	/* Add stuff at beginning of file to enable compilation */
-	asm_file << ".section .ktext\n";
+	asm_file << "SECTION .ktext\n";
 	asm_file << "global dummy_asm_func\n";
 	asm_file << "dummy_asm_func:\n";
 	asm_file << "\tret \n\n";
@@ -267,6 +275,7 @@ void write_assembly_to_file(vector<Syscall *> *syscall_list, string prog_name)
 
 	string dump = get_objdump(prog_name);
 	map<int, string> *syscall_func_map = get_syscall_func_map();
+	//syscall func map: syscall no. -> syscall string
 
 	for (auto i = syscall_list->begin(); i != syscall_list->end(); i++)
 	{
@@ -286,10 +295,8 @@ void compile_hermitcore()
 	int ret1, ret2, ret3;
 
 	cmd1 += "make clean -C " + string(HERMITCORE_BUILD_DIR);// + " &> /dev/null";
-	cmd2 += "make -j$(nproc) hermit-bootstrap-install -C " +
-		string(HERMITCORE_BUILD_DIR);// + " &> /dev/null";
-	cmd3 += "make -j$(nproc) install -C " +
-		string(HERMITCORE_BUILD_DIR);// + " &> /dev/null";
+	cmd2 += "make -j$(nproc) -C " + string(HERMITCORE_BUILD_DIR);// + " &> /dev/null";
+	cmd3 += "make -j$(nproc) install -C " + string(HERMITCORE_BUILD_DIR);// + " &> /dev/null";
 
 	ret1 = system(cmd1.c_str());
 	ret2 = system(cmd2.c_str());

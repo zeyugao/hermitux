@@ -127,8 +127,10 @@ void Syscall::get_value_in_register(Block *curr_block, string reg, Address start
         Block *preceding_block = (*j)->src();
         vector<Function *> pbfuncs;
         preceding_block->getFuncs(pbfuncs);
-        bool already_visited = any_of(visited->begin(), visited->end(), [preceding_block](Block *b) { return preceding_block == b; });
-        bool same_func = any_of(pbfuncs.begin(), pbfuncs.end(), [this](Function *f) { return this->function == f; });
+        bool already_visited = any_of(visited->begin(), visited->end(), [preceding_block](Block *b)
+                                      { return preceding_block == b; });
+        bool same_func = any_of(pbfuncs.begin(), pbfuncs.end(), [this](Function *f)
+                                { return this->function == f; });
         bool empty_list = possible_sc_nums->empty();
         if (!already_visited && (same_func || empty_list))
         {
@@ -205,10 +207,11 @@ int32_t Syscall::get_displacement()
     // get an address to jump to
     FILE *fpipe;
     string cmd = "nm " + string(HERMIT_EXECUTABLE_PATH) + " | grep " + get_dest_label();
+    cout << cmd << std::endl;;
     //nm hermitux | grep syscall_xxxxxx_destination
     char line[256]{'\0'};
     uint64_t dest_address;
-	int32_t displacement;
+    int32_t displacement;
 
     fpipe = popen(cmd.c_str(), "r");
     if (!fpipe)
@@ -225,10 +228,9 @@ int32_t Syscall::get_displacement()
         cout << "Error: Destination label not found\n";
         exit(1);
     }
-
     dest_address = strtol(line, NULL, 16);
 
-	/* For static binaries the syscall invocation address will always be
+    /* For static binaries the syscall invocation address will always be
 	 * superior to the destination as the invocation address is in application
 	 * code and the desitination in kernel code. Kernel code is mapped
 	 * @0x2000000 and application at 0x4000000. So the displacement is always
@@ -237,15 +239,15 @@ int32_t Syscall::get_displacement()
     return -displacement;
 }
 
-string Syscall::get_assembly_to_write(string objdump, map<int, string>* syscall_func_map)
+string Syscall::get_assembly_to_write(string objdump, map<int, string> *syscall_func_map)
 {
+    //输入objdump是binary的反汇编，syscall_func_map是可支持syscall的序号与内容的映射（由./supported_syscalls.csv得到的）
     string assembly = "";
     assembly += this->get_dest_label() + ":\n";
 
     // 可能的系统调用号
     vector<int> possible_sc_nos = this->get_possible_sc_nos();
     bool indeterminable_syscall = possible_sc_nos.size() != 1 || possible_sc_nos[0] < 0;
-
 
     if (indeterminable_syscall) // 无法确定的syscall
     {
@@ -255,11 +257,13 @@ string Syscall::get_assembly_to_write(string objdump, map<int, string>* syscall_
     {
         int syscall_no = possible_sc_nos[0];
         auto func_it = syscall_func_map->find(syscall_no);
-        
+
         if (func_it != syscall_func_map->end()) // 在受支持的syscall里面
         {
             string syscall_func = func_it->second;
             assembly += "\tmov rcx, r10\n"; // 这一句为什么，r10里面保存的是什么
+
+            assembly += "\textern " + syscall_func + "\n";
             assembly += "\tcall " + syscall_func + "\n";
         }
         else
@@ -275,10 +279,12 @@ string Syscall::get_assembly_to_write(string objdump, map<int, string>* syscall_
     {
         Instruction::Ptr instr(new Dyninst::InstructionAPI::Instruction(k->second));
         Address addr = k->first;
-        assembly += "\t" + this->get_objdump_instruction(objdump, addr) + "\n";
+        auto instr_to_insert = this->get_objdump_instruction(objdump, addr);
+        str_replace(instr_to_insert, std::string("PTR "), std::string(""));
+        assembly += "\t" + instr_to_insert + "\n";
         //assembly += "\t" + get_modified_instruction(instr);
         this->num_bytes_to_overwrite += instr->size();
-
+        //add the length after syscall
         if (this->num_bytes_to_overwrite >= EXTRA_OW_BYTES)
         {
             uint32_t w[2];
@@ -289,7 +295,7 @@ string Syscall::get_assembly_to_write(string objdump, map<int, string>* syscall_
 
             /* Return to user application */
             sprintf(hexaddr, "0x%08x", w[0]);
-            assembly += "\tpush $" + string(hexaddr) + "\n";
+            assembly += "\tpush " + string(hexaddr) + "\n";
             assembly += "\tret \n";
 
             break;
@@ -303,7 +309,7 @@ string Syscall::get_assembly_to_write(string objdump, map<int, string>* syscall_
 void Syscall::overwrite(fstream &binfile, uint64_t seg_offset, uint64_t seg_va)
 {
     int32_t displacement = this->get_displacement();
-    printf("disp=%x len=%d\n",displacement,this->num_bytes_to_overwrite);
+    printf("disp=%x len=%d\n", displacement, this->num_bytes_to_overwrite);
     uint64_t write_at = seg_offset + (this->address - seg_va);
     char *to_write = new char[this->num_bytes_to_overwrite];
     string padding = "";
@@ -314,9 +320,11 @@ void Syscall::overwrite(fstream &binfile, uint64_t seg_offset, uint64_t seg_va)
         char foo = (displacement >> (i * 8)) & 0xFF;
         memset(to_write + i + 1, foo, 1);
     }
-    memset(to_write + JMP_INSTR_SIZE, 0x90, this->num_bytes_to_overwrite-JMP_INSTR_SIZE);
+    memset(to_write + JMP_INSTR_SIZE, 0x90 /* NOP */, this->num_bytes_to_overwrite - JMP_INSTR_SIZE);
 
     binfile.seekp(write_at);
     binfile.write(to_write, this->num_bytes_to_overwrite);
+
+    // useless
     binfile.write(to_write, JMP_INSTR_SIZE);
 }
