@@ -240,11 +240,12 @@ string Syscall::get_assembly_to_write(string objdump, map<int, string>* syscall_
     string assembly = "";
     assembly += this->get_dest_label() + ":\n";
 
+    // 可能的系统调用号
     vector<int> possible_sc_nos = this->get_possible_sc_nos();
     bool indeterminable_syscall = possible_sc_nos.size() != 1 || possible_sc_nos[0] < 0;
 
 
-    if (indeterminable_syscall)
+    if (indeterminable_syscall) // 无法确定的syscall
     {
         assembly += "\tcall " SYSCALL_PROLOGUE_FUNC "\n";
     }
@@ -253,10 +254,10 @@ string Syscall::get_assembly_to_write(string objdump, map<int, string>* syscall_
         int syscall_no = possible_sc_nos[0];
         auto func_it = syscall_func_map->find(syscall_no);
         
-        if (func_it != syscall_func_map->end())
+        if (func_it != syscall_func_map->end()) // 在受支持的syscall里面
         {
             string syscall_func = func_it->second;
-            assembly += "\tmov \%r10,\%rcx \n";
+            assembly += "\tmov \%r10,\%rcx \n"; // 这一句为什么，r10里面保存的是什么
             assembly += "\tcall " + syscall_func + "\n";
         }
         else
@@ -299,7 +300,8 @@ string Syscall::get_assembly_to_write(string objdump, map<int, string>* syscall_
 
 void Syscall::overwrite(fstream &binfile, uint64_t seg_offset, uint64_t seg_va)
 {
-    int32_t displacement = this->get_displacement(); // No warning?
+    int32_t displacement = this->get_displacement();
+    printf("disp=%x len=%d\n",displacement,this->num_bytes_to_overwrite);
     uint64_t write_at = seg_offset + (this->address - seg_va);
     char *to_write = new char[this->num_bytes_to_overwrite];
     string padding = "";
@@ -310,9 +312,9 @@ void Syscall::overwrite(fstream &binfile, uint64_t seg_offset, uint64_t seg_va)
         char foo = (displacement >> (i * 8)) & 0xFF;
         memset(to_write + i + 1, foo, 1);
     }
-//    memset(to_write + JMP_INSTR_SIZE, 0x90, this->num_bytes_to_overwrite);
+    memset(to_write + JMP_INSTR_SIZE, 0x90, this->num_bytes_to_overwrite-JMP_INSTR_SIZE);
 
     binfile.seekp(write_at);
-    //binfile.write(to_write, this->num_bytes_to_overwrite);
+    binfile.write(to_write, this->num_bytes_to_overwrite);
     binfile.write(to_write, JMP_INSTR_SIZE);
 }

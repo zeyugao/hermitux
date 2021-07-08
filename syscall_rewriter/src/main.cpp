@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 	//???
 
 	// TODO: 
-	// compile_hermitcore();
+	compile_hermitcore();
 	//write hermitcore? ver. program to program_fast
 	char *new_file = copy_file(progName);
 	rewrite_syscalls(syscall_list, new_file);
