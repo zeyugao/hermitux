@@ -5,6 +5,7 @@ void remove_unrewritable(vector<Syscall *> *syscall_list, vector<Syscall *> *sc_
 bool block_too_small(Block *next_block);
 bool is_target(Block *syscall_block, Block *next_block);
 bool uses_rip(Block *next_block);
+bool uses_fs(Block *next_block);
 bool has_incompatible_instruction(Block *next_block);
 void rewrite_syscall(Syscall *syscall);
 void write_assembly_to_file(vector<Syscall *> *syscall_list, vector<Syscall *> *sc_prev_list, string prog_name);
@@ -123,7 +124,7 @@ vector<Syscall *> *get_all_syscalls(CodeObject *codeObject)
 											 { return addr == s->get_address(); });
 				if (!mnemonic.compare("syscall") and !already_caught)
 				{
-					if (is_whitelisted(addr))
+					if (1 || is_whitelisted(addr))
 					{
 						Syscall *sc = new Syscall(f, bb, instr, addr);
 						syscall_list->push_back(sc);
@@ -146,15 +147,34 @@ void remove_unrewritable(vector<Syscall *> *syscall_list, vector<Syscall *> *sc_
 		Block *scblock = sc->get_sc_block();
 		Block *nextblock = sc->get_next_block();
 		cout << hex << sc->get_address() << endl;
+		if (nextblock)
+		{
+			cout << nextblock->size() << endl;
+		}
 		/* No block following the syscall or next block is too small. */
 		if (block_too_small(nextblock))
+		{
 			coz |= 1;
+		}
 		/* Syscall block should be the only source for the next block */
-		//if (is_target(scblock, nextblock)) coz|=2;
+		else if (is_target(scblock, nextblock))
+		{
+			coz |= 2;
+		}
 		//cout<<"coz="<<coz<<endl;
 		/* If replaced instructions use the value of RIP */
-		//if (uses_rip(nextblock)) coz|=4;
-		//if (has_incompatible_instruction(nextblock)) coz|=8;
+		else if (uses_rip(nextblock))
+		{
+			coz |= 4;
+		}
+		else if (uses_fs(nextblock))
+		{
+			coz |= 8;
+		}
+		else if (has_incompatible_instruction(nextblock))
+		{
+			coz |= 16;
+		}
 		cout << "coz=" << coz << endl;
 		if (coz)
 		{
@@ -253,6 +273,34 @@ bool uses_rip(Block *next_block)
 	return false;
 }
 
+bool uses_fs(Block *next_block)
+{
+	Block::Insns instructions;
+	next_block->getInsns(instructions);
+	int count = 0;
+	for (auto k = instructions.begin(); k != instructions.end(); ++k)
+	{
+		Instruction::Ptr instr(new Dyninst::InstructionAPI::Instruction(k->second));
+		set<RegisterAST::Ptr> rdregs;
+
+		instr->getReadSet(rdregs);
+		for (auto i = rdregs.begin(); i != rdregs.end(); ++i)
+		{
+			RegisterAST::Ptr reg = *i;
+			if (!reg->format().compare("FS"))
+			{
+				cout << "fs register detected" << endl;
+				return true;
+			}
+		}
+
+		count += instr->size();
+		if (count >= EXTRA_OW_BYTES)
+			break;
+	}
+	return false;
+}
+
 /* Jump, call or instruction where the destination operand is an immediate */
 bool has_incompatible_instruction(Block *next_block)
 {
@@ -297,6 +345,7 @@ void write_assembly_to_file(vector<Syscall *> *syscall_list, vector<Syscall *> *
 
 	for (auto i = syscall_list->begin(); i != syscall_list->end(); i++)
 	{
+		cout << "c1" << endl;
 		Syscall *sc = *i;
 
 		string to_write = sc->get_assembly_to_write(dump, syscall_func_map);

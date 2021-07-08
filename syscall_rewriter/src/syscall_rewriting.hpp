@@ -15,6 +15,7 @@
 #include "PatchObject.h"
 #include "PatchModifier.h"
 #include "Immediate.h"
+#include <string>
 
 #define SC_INSTR_SIZE 2
 #define JMP_INSTR_SIZE 5
