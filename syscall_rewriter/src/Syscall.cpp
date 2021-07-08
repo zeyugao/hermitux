@@ -259,7 +259,7 @@ string Syscall::get_assembly_to_write(string objdump, map<int, string>* syscall_
         if (func_it != syscall_func_map->end()) // 在受支持的syscall里面
         {
             string syscall_func = func_it->second;
-            assembly += "\tmov \%r10,\%rcx \n"; // 这一句为什么，r10里面保存的是什么
+            assembly += "\tmov rcx, r10\n"; // 这一句为什么，r10里面保存的是什么
             assembly += "\tcall " + syscall_func + "\n";
         }
         else

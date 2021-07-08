@@ -260,8 +260,7 @@ void write_assembly_to_file(vector<Syscall *> *syscall_list, string prog_name)
 	}
 	/* Add stuff at beginning of file to enable compilation */
 	asm_file << ".section .ktext\n";
-	asm_file << ".globl dummy_asm_func\n";
-	asm_file << ".type dummy_asm_func, @function\n\n";
+	asm_file << "global dummy_asm_func\n";
 	asm_file << "dummy_asm_func:\n";
 	asm_file << "\tret \n\n";
 	asm_file << get_syscall_asm_func();
@@ -324,7 +323,7 @@ string get_objdump(string prog_name)
 {
 	char buf[256];
 	string dump;
-	string cmd = "objdump -d --no-show-raw-insn " + prog_name;
+	string cmd = "objdump -d -M intel --no-show-raw-insn " + prog_name;
 	FILE *dump_stream = (FILE *)popen(cmd.c_str(), "r");
 	if (!dump_stream)
 	{
